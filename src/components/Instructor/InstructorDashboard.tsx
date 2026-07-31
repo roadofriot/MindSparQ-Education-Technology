@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { InstructorProfile } from '../../types';
+import { GoogleDriveEmbedModal } from '../Common/GoogleDriveEmbedModal';
 import { 
   UserCheck, 
   Edit3, 
@@ -18,7 +19,10 @@ import {
   Eye,
   Heart,
   Tag,
-  Share2
+  Share2,
+  HardDrive,
+  Clock,
+  ShieldAlert
 } from 'lucide-react';
 
 export const InstructorDashboard: React.FC = () => {
@@ -35,7 +39,9 @@ export const InstructorDashboard: React.FC = () => {
     language,
     loginWithGoogle,
     setIsAuthModalOpen,
-    setActiveVideoUrl
+    setActiveVideoUrl,
+    teacherRequests,
+    submitTeacherLoginRequest
   } = useApp();
 
   const isNp = language === 'np';
@@ -44,7 +50,15 @@ export const InstructorDashboard: React.FC = () => {
   const currentInstructor: InstructorProfile | undefined = 
     instructors.find(i => i.id === currentUser?.instructorProfileId) || instructors[0];
 
+  const userTeacherRequest = currentUser?.email
+    ? teacherRequests.find(r => r.email.toLowerCase() === currentUser.email?.toLowerCase())
+    : undefined;
+
   const [activeTab, setActiveTab] = useState<'profile' | 'publish' | 'courses' | 'content'>('profile');
+
+  // Google Drive Modal State
+  const [isDriveModalOpen, setIsDriveModalOpen] = useState(false);
+  const [driveTarget, setDriveTarget] = useState<'post_video' | 'course_video' | null>(null);
 
   // Profile Edit State
   const [profileForm, setProfileForm] = useState<Partial<InstructorProfile>>({
@@ -84,6 +98,20 @@ export const InstructorDashboard: React.FC = () => {
   const [courseThumbnail, setCourseThumbnail] = useState('https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=800&auto=format&fit=crop&q=80');
   const [courseVideoPreview, setCourseVideoPreview] = useState('https://www.youtube.com/embed/mU6anWqZJcc');
   const [courseSuccess, setCourseSuccess] = useState(false);
+
+  // Open Drive Helper
+  const openDriveHelper = (target: 'post_video' | 'course_video') => {
+    setDriveTarget(target);
+    setIsDriveModalOpen(true);
+  };
+
+  const handleDriveUrlSelect = (embedUrl: string) => {
+    if (driveTarget === 'post_video') {
+      setVideoEmbedUrl(embedUrl);
+    } else if (driveTarget === 'course_video') {
+      setCourseVideoPreview(embedUrl);
+    }
+  };
 
   // Filter posts belonging to current instructor
   const myPosts = posts.filter(p => p.authorId === currentInstructor?.id || p.authorName === currentInstructor?.name);
@@ -487,12 +515,22 @@ export const InstructorDashboard: React.FC = () => {
               {postType === 'video' && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">YouTube Embed URL</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-semibold text-slate-700">YouTube Embed or Google Drive Video URL</label>
+                      <button
+                        type="button"
+                        onClick={() => openDriveHelper('post_video')}
+                        className="text-[10px] font-bold text-indigo-600 hover:underline flex items-center space-x-1"
+                      >
+                        <HardDrive className="w-3 h-3" />
+                        <span>Google Drive Helper</span>
+                      </button>
+                    </div>
                     <input
                       type="url"
                       value={videoEmbedUrl}
                       onChange={(e) => setVideoEmbedUrl(e.target.value)}
-                      placeholder="https://www.youtube.com/embed/mU6anWqZJcc"
+                      placeholder="https://www.youtube.com/embed/mU6anWqZJcc or Drive Preview Link"
                       className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-indigo-600 font-mono"
                     />
                   </div>
@@ -628,7 +666,7 @@ export const InstructorDashboard: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Thumbnail Image URL</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Thumbnail Cover Image URL</label>
                   <input
                     type="url"
                     value={courseThumbnail}
@@ -637,7 +675,17 @@ export const InstructorDashboard: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Video Orientation URL</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-semibold text-slate-700">Preview Video / Google Drive Video URL</label>
+                    <button
+                      type="button"
+                      onClick={() => openDriveHelper('course_video')}
+                      className="text-[10px] font-bold text-indigo-600 hover:underline flex items-center space-x-1"
+                    >
+                      <HardDrive className="w-3 h-3" />
+                      <span>Drive Helper</span>
+                    </button>
+                  </div>
                   <input
                     type="url"
                     value={courseVideoPreview}
@@ -727,6 +775,13 @@ export const InstructorDashboard: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Google Drive Embed Helper Modal */}
+        <GoogleDriveEmbedModal
+          isOpen={isDriveModalOpen}
+          onClose={() => setIsDriveModalOpen(false)}
+          onSelectEmbedUrl={handleDriveUrlSelect}
+        />
 
       </div>
     </div>

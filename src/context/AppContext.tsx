@@ -1,49 +1,118 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Course, InstructorProfile, InstructionalPost, StudentInquiry, User, UserRole, Language } from '../types';
-import { initialCourses, initialInquiries, initialInstructors, initialPosts } from '../data/initialData';
+import { Course, InstructorProfile, InstructionalPost, StudentInquiry, User, UserRole, Language, DailyPhotoSlide, PostComment, HomeContentConfig, TeacherLoginRequest, ReadingHistoryItem } from '../types';
+import { initialCourses, initialInquiries, initialInstructors, initialPosts, initialDailyPhotos, initialHomeConfig, initialTeacherRequests, initialUsers } from '../data/initialData';
 
 interface AppContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
   currentRole: UserRole;
-  switchRole: (role: UserRole) => void;
+  switchRole: (role: UserRole, targetUser?: User) => void;
   currentUser: User | null;
-  loginWithGoogle: (role?: UserRole, instructorId?: string) => void;
+  loginWithGoogle: (roleOrUser?: UserRole | User, instructorId?: string) => void;
   logout: () => void;
   instructors: InstructorProfile[];
   courses: Course[];
   posts: InstructionalPost[];
+  dailyPhotos: DailyPhotoSlide[];
   inquiries: StudentInquiry[];
+  homeConfig: HomeContentConfig;
+  teacherRequests: TeacherLoginRequest[];
+  users: User[];
   activeVideoUrl: string | null;
   setActiveVideoUrl: (url: string | null) => void;
   isAuthModalOpen: boolean;
   setIsAuthModalOpen: (open: boolean) => void;
-  isGuideModalOpen: boolean;
-  setIsGuideModalOpen: (open: boolean) => void;
+  isVisualEditMode: boolean;
+  setIsVisualEditMode: (enabled: boolean) => void;
+
+  // Member Activity & Engagement State
+  bookmarks: string[]; // List of bookmarked course/post IDs
+  toggleBookmark: (id: string, title?: string, type?: 'course' | 'post') => void;
+  readingHistory: ReadingHistoryItem[];
+  recordReadingHistory: (item: { id: string; title: string; type: 'course' | 'post' }) => void;
+  likedCourseIds: string[];
+  toggleLikeCourse: (courseId: string) => void;
+  subscribedInstructors: string[];
+  toggleSubscribeInstructor: (instructorId: string) => void;
   
   // Actions
+  updateHomeConfig: (newConfig: Partial<HomeContentConfig>) => void;
   addPost: (postData: Omit<InstructionalPost, 'id' | 'createdAt' | 'likes' | 'commentsCount'>) => void;
+  updatePost: (postId: string, updatedPost: Partial<InstructionalPost>) => void;
   likePost: (postId: string) => void;
   deletePost: (postId: string) => void;
+  addCommentToPost: (postId: string, text: string) => void;
+  deleteCommentFromPost: (postId: string, commentId: string) => void;
+  addDailyPhoto: (photoData: Omit<DailyPhotoSlide, 'id'>) => void;
+  deleteDailyPhoto: (photoId: string) => void;
   addCourse: (courseData: Omit<Course, 'id' | 'createdAt'>) => void;
+  updateCourse: (courseId: string, updatedCourse: Partial<Course>) => void;
   deleteCourse: (courseId: string) => void;
   updateInstructorProfile: (instructorId: string, updatedData: Partial<InstructorProfile>) => void;
   addInstructor: (instructorData: Omit<InstructorProfile, 'id' | 'joinedDate'>) => void;
   submitInquiry: (inquiryData: Omit<StudentInquiry, 'id' | 'status' | 'createdAt'>) => void;
   updateInquiryStatus: (id: string, status: StudentInquiry['status']) => void;
+  
+  // User & Role Management
+  updateUserRole: (userId: string, newRole: UserRole) => void;
+  deleteUser: (userId: string) => void;
+  addUser: (userData: Omit<User, 'id'>) => void;
+
+  // Teacher Requests Approval Actions
+  submitTeacherLoginRequest: (reqData: Omit<TeacherLoginRequest, 'id' | 'status' | 'requestedAt'>) => void;
+  approveTeacherRequest: (requestId: string) => void;
+  rejectTeacherRequest: (requestId: string) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-const LOCAL_STORAGE_KEY = 'mindspack_app_state_v1';
+const LOCAL_STORAGE_KEY = 'mindsparq_app_state_v3';
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [language, setLanguageState] = useState<Language>('np');
-  const [currentRole, setCurrentRole] = useState<UserRole>('guest');
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [language, setLanguageState] = useState<Language>('en');
+  // User Auth State
+  const [currentRole, setCurrentRole] = useState<UserRole>(() => {
+    const savedRole = localStorage.getItem(`${LOCAL_STORAGE_KEY}_role`);
+    return (savedRole as UserRole) || 'guest';
+  });
+
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    const savedUser = localStorage.getItem(`${LOCAL_STORAGE_KEY}_user`);
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
+
   const [activeVideoUrl, setActiveVideoUrl] = useState<string | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
-  const [isGuideModalOpen, setIsGuideModalOpen] = useState<boolean>(false);
+  const [isVisualEditMode, setIsVisualEditMode] = useState<boolean>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_visual_edit`);
+    return saved ? JSON.parse(saved) : false;
+  });
+
+  useEffect(() => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_visual_edit`, JSON.stringify(isVisualEditMode));
+  }, [isVisualEditMode]);
+
+  // Sync Auth with localStorage
+  useEffect(() => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_role`, currentRole);
+    if (currentUser) {
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_user`, JSON.stringify(currentUser));
+    } else {
+      localStorage.removeItem(`${LOCAL_STORAGE_KEY}_user`);
+    }
+  }, [currentRole, currentUser]);
+
+  // Home Config State
+  const [homeConfig, setHomeConfig] = useState<HomeContentConfig>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_home`);
+    return saved ? JSON.parse(saved) : initialHomeConfig;
+  });
+
+  // Teacher Login Requests State
+  const [teacherRequests, setTeacherRequests] = useState<TeacherLoginRequest[]>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_teacher_reqs`);
+    return saved ? JSON.parse(saved) : initialTeacherRequests;
+  });
 
   // Core collections
   const [instructors, setInstructors] = useState<InstructorProfile[]>(() => {
@@ -61,12 +130,129 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved ? JSON.parse(saved) : initialPosts;
   });
 
+  const [dailyPhotos, setDailyPhotos] = useState<DailyPhotoSlide[]>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_photos`);
+    return saved ? JSON.parse(saved) : initialDailyPhotos;
+  });
+
   const [inquiries, setInquiries] = useState<StudentInquiry[]>(() => {
     const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_inquiries`);
     return saved ? JSON.parse(saved) : initialInquiries;
   });
 
+  // User Management State
+  const [users, setUsers] = useState<User[]>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_users`);
+    return saved ? JSON.parse(saved) : initialUsers;
+  });
+
+  // Member Engagement State
+  const [bookmarks, setBookmarks] = useState<string[]>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_bookmarks`);
+    return saved ? JSON.parse(saved) : ['course-1', 'post-1'];
+  });
+
+  const [readingHistory, setReadingHistory] = useState<ReadingHistoryItem[]>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_history`);
+    return saved ? JSON.parse(saved) : [
+      { id: 'course-1', title: 'Full Stack Web Development Masterclass', type: 'course', visitedAt: new Date().toISOString() },
+      { id: 'post-1', title: 'Generative AI Roadmap 2026', type: 'post', visitedAt: new Date().toISOString() }
+    ];
+  });
+
+  const [likedCourseIds, setLikedCourseIds] = useState<string[]>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_liked_courses`);
+    return saved ? JSON.parse(saved) : ['course-1'];
+  });
+
+  const [subscribedInstructors, setSubscribedInstructors] = useState<string[]>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_subs`);
+    return saved ? JSON.parse(saved) : ['inst-1'];
+  });
+
   // Sync with localStorage
+  useEffect(() => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_users`, JSON.stringify(users));
+  }, [users]);
+
+  useEffect(() => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_bookmarks`, JSON.stringify(bookmarks));
+  }, [bookmarks]);
+
+  useEffect(() => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_history`, JSON.stringify(readingHistory));
+  }, [readingHistory]);
+
+  useEffect(() => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_liked_courses`, JSON.stringify(likedCourseIds));
+  }, [likedCourseIds]);
+
+  useEffect(() => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_subs`, JSON.stringify(subscribedInstructors));
+  }, [subscribedInstructors]);
+
+  const toggleBookmark = (id: string, title?: string, type: 'course' | 'post' = 'course') => {
+    setBookmarks(prev => {
+      if (prev.includes(id)) {
+        return prev.filter(item => item !== id);
+      } else {
+        if (title) {
+          recordReadingHistory({ id, title, type });
+        }
+        return [...prev, id];
+      }
+    });
+  };
+
+  const recordReadingHistory = (item: { id: string; title: string; type: 'course' | 'post' }) => {
+    setReadingHistory(prev => {
+      const filtered = prev.filter(h => h.id !== item.id);
+      return [{ ...item, visitedAt: new Date().toISOString() }, ...filtered].slice(0, 20);
+    });
+  };
+
+  const toggleLikeCourse = (courseId: string) => {
+    setLikedCourseIds(prev =>
+      prev.includes(courseId) ? prev.filter(id => id !== courseId) : [...prev, courseId]
+    );
+  };
+
+  const toggleSubscribeInstructor = (instructorId: string) => {
+    setSubscribedInstructors(prev =>
+      prev.includes(instructorId) ? prev.filter(id => id !== instructorId) : [...prev, instructorId]
+    );
+  };
+
+  const updateUserRole = (userId: string, newRole: UserRole) => {
+    setUsers(prev => prev.map(u => (u.id === userId ? { ...u, role: newRole } : u)));
+    if (currentUser?.id === userId) {
+      setCurrentUser(prev => prev ? { ...prev, role: newRole } : null);
+      setCurrentRole(newRole);
+    }
+  };
+
+  const deleteUser = (userId: string) => {
+    setUsers(prev => prev.filter(u => u.id !== userId));
+  };
+
+  const addUser = (userData: Omit<User, 'id'>) => {
+    const newUser: User = {
+      ...userData,
+      id: `user-${Date.now()}`,
+      joinedDate: new Date().toISOString().split('T')[0]
+    };
+    setUsers(prev => [...prev, newUser]);
+  };
+
+  // Sync with localStorage
+  useEffect(() => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_home`, JSON.stringify(homeConfig));
+  }, [homeConfig]);
+
+  useEffect(() => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_teacher_reqs`, JSON.stringify(teacherRequests));
+  }, [teacherRequests]);
+
   useEffect(() => {
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_instructors`, JSON.stringify(instructors));
   }, [instructors]);
@@ -80,6 +266,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [posts]);
 
   useEffect(() => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_photos`, JSON.stringify(dailyPhotos));
+  }, [dailyPhotos]);
+
+  useEffect(() => {
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_inquiries`, JSON.stringify(inquiries));
   }, [inquiries]);
 
@@ -87,16 +277,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setLanguageState(lang);
   };
 
-  const switchRole = (role: UserRole) => {
+  const updateHomeConfig = (newConfig: Partial<HomeContentConfig>) => {
+    setHomeConfig(prev => ({ ...prev, ...newConfig }));
+  };
+
+  const switchRole = (role: UserRole, targetUser?: User) => {
     setCurrentRole(role);
+    if (targetUser) {
+      setCurrentUser(targetUser);
+      return;
+    }
+
     if (role === 'guest') {
       setCurrentUser(null);
     } else if (role === 'admin') {
       setCurrentUser({
         id: 'user-admin',
-        name: 'Mindspack Administrator',
-        email: 'admin@mindspack.edu.np',
-        avatar: 'https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=400&auto=format&fit=crop&q=80',
+        name: 'MindSparQ System Admin',
+        email: 'roadofriot@gmail.com',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
         role: 'admin'
       });
     } else if (role === 'instructor') {
@@ -120,16 +319,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const loginWithGoogle = (role: UserRole = 'instructor', instructorId?: string) => {
-    let targetInst = instructors.find(i => i.id === instructorId) || instructors[0];
-    const newUser: User = {
-      id: `user-google-${Date.now()}`,
-      name: role === 'admin' ? 'Mindspack Admin (Google Auth)' : targetInst.name,
-      email: role === 'admin' ? 'roadofriot@gmail.com' : targetInst.email,
-      avatar: role === 'admin' ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80' : targetInst.avatar,
-      role: role,
-      instructorProfileId: role === 'instructor' ? targetInst.id : undefined
-    };
+  const loginWithGoogle = (roleOrUser: UserRole | User = 'instructor', instructorId?: string) => {
+    let newUser: User;
+
+    if (typeof roleOrUser === 'object' && roleOrUser !== null) {
+      newUser = roleOrUser;
+      setCurrentUser(newUser);
+      setCurrentRole(newUser.role);
+      setIsAuthModalOpen(false);
+      return;
+    }
+
+    const role = roleOrUser as UserRole;
+    if (role === 'admin') {
+      newUser = {
+        id: `user-google-${Date.now()}`,
+        name: 'MindSparQ Admin (Google Auth)',
+        email: 'roadofriot@gmail.com',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
+        role: 'admin'
+      };
+    } else if (role === 'guest' || role === 'student') {
+      newUser = {
+        id: `user-google-guest-${Date.now()}`,
+        name: role === 'guest' ? 'Guest Explorer (Google Auth)' : 'Student Learner (Google Auth)',
+        email: role === 'guest' ? 'guest.explorer@gmail.com' : 'student.learner@gmail.com',
+        avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=80',
+        role: role
+      };
+    } else {
+      let targetInst = instructors.find(i => i.id === instructorId) || instructors[0];
+      newUser = {
+        id: `user-google-${Date.now()}`,
+        name: targetInst.name,
+        email: targetInst.email,
+        avatar: targetInst.avatar,
+        role: 'instructor',
+        instructorProfileId: targetInst.id
+      };
+    }
 
     setCurrentUser(newUser);
     setCurrentRole(role);
@@ -148,7 +376,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: new Date().toISOString().split('T')[0],
       likes: 0,
       likedByMe: false,
-      commentsCount: 0
+      commentsCount: 0,
+      comments: []
     };
     setPosts(prev => [newPost, ...prev]);
   };
@@ -173,6 +402,67 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setPosts(prev => prev.filter(p => p.id !== postId));
   };
 
+  const addCommentToPost = (postId: string, text: string) => {
+    if (!text.trim()) return;
+    const authorName = currentUser?.name || 'Community Member';
+    const authorAvatar = currentUser?.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=80';
+    const authorRole = currentUser?.role || 'guest';
+
+    const newComment: PostComment = {
+      id: `comm-${Date.now()}`,
+      postId,
+      authorName,
+      authorAvatar,
+      authorRole,
+      text: text.trim(),
+      createdAt: new Date().toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' })
+    };
+
+    setPosts(prev =>
+      prev.map(p => {
+        if (p.id === postId) {
+          const existingComments = p.comments || [];
+          const updated = [...existingComments, newComment];
+          return {
+            ...p,
+            comments: updated,
+            commentsCount: updated.length
+          };
+        }
+        return p;
+      })
+    );
+  };
+
+  const deleteCommentFromPost = (postId: string, commentId: string) => {
+    setPosts(prev =>
+      prev.map(p => {
+        if (p.id === postId) {
+          const existingComments = p.comments || [];
+          const updated = existingComments.filter(c => c.id !== commentId);
+          return {
+            ...p,
+            comments: updated,
+            commentsCount: updated.length
+          };
+        }
+        return p;
+      })
+    );
+  };
+
+  const addDailyPhoto = (photoData: Omit<DailyPhotoSlide, 'id'>) => {
+    const newPhoto: DailyPhotoSlide = {
+      ...photoData,
+      id: `photo-${Date.now()}`
+    };
+    setDailyPhotos(prev => [newPhoto, ...prev]);
+  };
+
+  const deleteDailyPhoto = (photoId: string) => {
+    setDailyPhotos(prev => prev.filter(p => p.id !== photoId));
+  };
+
   const addCourse = (courseData: Omit<Course, 'id' | 'createdAt'>) => {
     const newCourse: Course = {
       ...courseData,
@@ -190,7 +480,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setInstructors(prev =>
       prev.map(inst => (inst.id === instructorId ? { ...inst, ...updatedData } : inst))
     );
-    // Also update logged in user if applicable
     if (currentUser?.instructorProfileId === instructorId) {
       setCurrentUser(prev => prev ? {
         ...prev,
@@ -226,6 +515,69 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
+  const updatePost = (postId: string, updatedPost: Partial<InstructionalPost>) => {
+    setPosts(prev => prev.map(p => (p.id === postId ? { ...p, ...updatedPost } : p)));
+  };
+
+  const updateCourse = (courseId: string, updatedCourse: Partial<Course>) => {
+    setCourses(prev => prev.map(c => (c.id === courseId ? { ...c, ...updatedCourse } : c)));
+  };
+
+  const submitTeacherLoginRequest = (reqData: Omit<TeacherLoginRequest, 'id' | 'status' | 'requestedAt'>) => {
+    const newReq: TeacherLoginRequest = {
+      ...reqData,
+      id: `req-${Date.now()}`,
+      status: 'pending',
+      requestedAt: new Date().toISOString().split('T')[0]
+    };
+    setTeacherRequests(prev => [newReq, ...prev]);
+  };
+
+  const approveTeacherRequest = (requestId: string) => {
+    const req = teacherRequests.find(r => r.id === requestId);
+    if (!req) return;
+
+    // Mark request as approved
+    setTeacherRequests(prev =>
+      prev.map(r => (r.id === requestId ? { ...r, status: 'approved' } : r))
+    );
+
+    // Automatically register as verified instructor if not already present
+    const existingInst = instructors.find(i => i.email.toLowerCase() === req.email.toLowerCase());
+    let newInstId = existingInst?.id;
+
+    if (!existingInst) {
+      newInstId = `inst-${Date.now()}`;
+      const newInstProfile: InstructorProfile = {
+        id: newInstId,
+        name: req.name,
+        email: req.email,
+        avatar: req.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
+        designation: req.designation || 'Teacher / Instructor',
+        bio: req.bio || 'Verified MindSparQ Instructor',
+        qualifications: ['Approved MindSparQ Instructor'],
+        expertise: ['Tech Instruction', 'STEM Pedagogy'],
+        rating: 5.0,
+        totalStudents: 0,
+        totalCourses: 0,
+        social: {},
+        isVerified: true,
+        joinedDate: new Date().toISOString().split('T')[0]
+      };
+      setInstructors(prev => [...prev, newInstProfile]);
+    } else {
+      setInstructors(prev =>
+        prev.map(i => (i.id === existingInst.id ? { ...i, isVerified: true } : i))
+      );
+    }
+  };
+
+  const rejectTeacherRequest = (requestId: string) => {
+    setTeacherRequests(prev =>
+      prev.map(r => (r.id === requestId ? { ...r, status: 'rejected' } : r))
+    );
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -239,22 +591,47 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         instructors,
         courses,
         posts,
+        dailyPhotos,
         inquiries,
+        homeConfig,
+        teacherRequests,
+        users,
         activeVideoUrl,
         setActiveVideoUrl,
         isAuthModalOpen,
         setIsAuthModalOpen,
-        isGuideModalOpen,
-        setIsGuideModalOpen,
+        isVisualEditMode,
+        setIsVisualEditMode,
+        bookmarks,
+        toggleBookmark,
+        readingHistory,
+        recordReadingHistory,
+        likedCourseIds,
+        toggleLikeCourse,
+        subscribedInstructors,
+        toggleSubscribeInstructor,
+        updateHomeConfig,
         addPost,
+        updatePost,
         likePost,
         deletePost,
+        addCommentToPost,
+        deleteCommentFromPost,
+        addDailyPhoto,
+        deleteDailyPhoto,
         addCourse,
+        updateCourse,
         deleteCourse,
         updateInstructorProfile,
         addInstructor,
         submitInquiry,
-        updateInquiryStatus
+        updateInquiryStatus,
+        updateUserRole,
+        deleteUser,
+        addUser,
+        submitTeacherLoginRequest,
+        approveTeacherRequest,
+        rejectTeacherRequest
       }}
     >
       {children}

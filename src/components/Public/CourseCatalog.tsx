@@ -1,19 +1,51 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Course } from '../../types';
-import { Search, Filter, Clock, BookOpen, Star, Play, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Search, Filter, Clock, BookOpen, Star, Play, CheckCircle2, ArrowRight, Trash2, Edit3, Save, X, Heart, Bookmark, Share2 } from 'lucide-react';
 
 interface CourseCatalogProps {
   onSelectCourseForInquiry: (courseTitle: string) => void;
 }
 
 export const CourseCatalog: React.FC<CourseCatalogProps> = ({ onSelectCourseForInquiry }) => {
-  const { courses, language, setActiveVideoUrl } = useApp();
+  const {
+    courses,
+    language,
+    setActiveVideoUrl,
+    isVisualEditMode,
+    currentRole,
+    deleteCourse,
+    updateCourse,
+    bookmarks,
+    toggleBookmark,
+    likedCourseIds,
+    toggleLikeCourse
+  } = useApp();
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [editingCourse, setEditingCourse] = useState<Course | null>(null);
+  const [copiedCourseId, setCopiedCourseId] = useState<string | null>(null);
 
   const isNp = language === 'np';
+  const isAdminVisualEdit = currentRole === 'admin' && isVisualEditMode;
+
+  const handleShare = (course: Course) => {
+    const shareUrl = window.location.href;
+    if (navigator.share) {
+      navigator.share({ title: course.title, text: course.description, url: shareUrl }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(`${course.title} - ${shareUrl}`);
+      setCopiedCourseId(course.id);
+      setTimeout(() => setCopiedCourseId(null), 2000);
+    }
+  };
+
+  const handleDeleteCourse = (courseId: string, courseTitle: string) => {
+    if (window.confirm(`Are you sure you want to delete course "${courseTitle}"? This will remove it from the website.`)) {
+      deleteCourse(courseId);
+    }
+  };
 
   const categories = [
     'All',
@@ -96,8 +128,29 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({ onSelectCourseForI
             {filteredCourses.map((course) => (
               <div
                 key={course.id}
-                className="bg-white rounded-2xl border border-slate-200 hover:border-indigo-300 overflow-hidden flex flex-col transition-all duration-300 hover:-translate-y-1 shadow-sm group"
+                id={`course-card-${course.id}`}
+                className={`bg-white rounded-2xl border ${isAdminVisualEdit ? 'border-indigo-400 ring-2 ring-indigo-300/50' : 'border-slate-200'} hover:border-indigo-300 overflow-hidden flex flex-col transition-all duration-300 hover:-translate-y-1 shadow-sm group relative`}
               >
+                {/* On-Site Editor Actions Overlay (Admin Only) */}
+                {isAdminVisualEdit && (
+                  <div className="absolute top-3 right-3 z-20 flex items-center space-x-1.5 bg-slate-900/90 backdrop-blur-md p-1.5 rounded-xl border border-slate-700 shadow-xl">
+                    <button
+                      onClick={() => setEditingCourse(course)}
+                      className="p-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold transition-all"
+                      title="Edit Course Directly"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteCourse(course.id, course.title)}
+                      className="p-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold transition-all"
+                      title="Delete Course from Website"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+
                 {/* Course Thumbnail */}
                 <div className="relative aspect-video bg-slate-900 overflow-hidden">
                   <img
@@ -108,6 +161,51 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({ onSelectCourseForI
                   <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-md border border-slate-200 text-indigo-700 text-[11px] font-bold px-2.5 py-1 rounded-md shadow-sm">
                     {course.category}
                   </div>
+
+                  {/* Interactive Engagement Quick Bar */}
+                  <div className="absolute top-3 right-3 flex items-center space-x-1 bg-slate-900/80 backdrop-blur-md p-1 rounded-xl border border-slate-700 shadow-md">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleLikeCourse(course.id);
+                      }}
+                      className={`p-1.5 rounded-lg text-xs transition ${
+                        likedCourseIds.includes(course.id)
+                          ? 'bg-rose-500 text-white'
+                          : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                      }`}
+                      title={likedCourseIds.includes(course.id) ? 'Unlike Course' : 'Like Course'}
+                    >
+                      <Heart className={`w-3.5 h-3.5 ${likedCourseIds.includes(course.id) ? 'fill-current' : ''}`} />
+                    </button>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleBookmark(course.id, course.title, 'course');
+                      }}
+                      className={`p-1.5 rounded-lg text-xs transition ${
+                        bookmarks.includes(course.id)
+                          ? 'bg-cyan-500 text-slate-950 font-bold'
+                          : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                      }`}
+                      title={bookmarks.includes(course.id) ? 'Remove Bookmark' : 'Save Bookmark'}
+                    >
+                      <Bookmark className={`w-3.5 h-3.5 ${bookmarks.includes(course.id) ? 'fill-current' : ''}`} />
+                    </button>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleShare(course);
+                      }}
+                      className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 text-xs transition"
+                      title="Share Course"
+                    >
+                      <Share2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
                   {course.previewVideoUrl && (
                     <button
                       onClick={() => setActiveVideoUrl(course.previewVideoUrl || '')}
@@ -290,6 +388,103 @@ export const CourseCatalog: React.FC<CourseCatalogProps> = ({ onSelectCourseForI
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* On-Site Direct Edit Course Modal */}
+      {editingCourse && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl border border-slate-200 max-w-lg w-full p-6 space-y-4 shadow-2xl relative text-xs">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center space-x-2 text-indigo-600 font-bold">
+                <Edit3 className="w-4 h-4" />
+                <h3 className="text-sm font-black text-slate-900">Direct Edit Course Content</h3>
+              </div>
+              <button onClick={() => setEditingCourse(null)} className="p-1 text-slate-400 hover:text-slate-600">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                updateCourse(editingCourse.id, editingCourse);
+                setEditingCourse(null);
+              }}
+              className="space-y-3"
+            >
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Course Title (English)</label>
+                <input
+                  type="text"
+                  value={editingCourse.title}
+                  onChange={(e) => setEditingCourse({ ...editingCourse, title: e.target.value, titleEn: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Course Title (Nepali)</label>
+                <input
+                  type="text"
+                  value={editingCourse.titleNp || ''}
+                  onChange={(e) => setEditingCourse({ ...editingCourse, titleNp: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Price (NPR)</label>
+                <input
+                  type="number"
+                  value={editingCourse.price}
+                  onChange={(e) => setEditingCourse({ ...editingCourse, price: Number(e.target.value) })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Description</label>
+                <textarea
+                  rows={3}
+                  value={editingCourse.description}
+                  onChange={(e) => setEditingCourse({ ...editingCourse, description: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl"
+                  required
+                />
+              </div>
+
+              <div className="flex justify-between items-center pt-2">
+                <button
+                  type="button"
+                  onClick={() => handleDeleteCourse(editingCourse.id, editingCourse.title)}
+                  className="px-3 py-2 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-xl font-bold flex items-center space-x-1"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete Course</span>
+                </button>
+
+                <div className="flex space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingCourse(null)}
+                    className="px-3 py-2 bg-slate-100 text-slate-600 rounded-xl font-bold"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl flex items-center space-x-1"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    <span>Save Course Changes</span>
+                  </button>
+                </div>
+              </div>
+            </form>
           </div>
         </div>
       )}

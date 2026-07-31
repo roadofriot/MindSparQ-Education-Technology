@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
   GraduationCap, 
@@ -10,14 +10,14 @@ import {
   User, 
   LogOut, 
   LogIn, 
-  Sparkles,
   BookOpen,
   Rss,
   Users,
   Info,
   Send,
-  HelpCircle,
-  LayoutDashboard
+  ChevronDown,
+  Sparkles,
+  Award
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -34,47 +34,78 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
     currentUser, 
     logout, 
     setIsAuthModalOpen,
-    setIsGuideModalOpen
+    instructors
   } = useApp();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
+  const roleDropdownRef = useRef<HTMLDivElement>(null);
 
   const isNp = language === 'np';
+  const isZh = language === 'zh';
+
+  // Helper for 3-way multilingual text
+  const t = (enText: string, npText: string, zhText: string) => {
+    if (language === 'zh') return zhText;
+    if (language === 'np') return npText;
+    return enText;
+  };
 
   const navLinks = [
-    { id: 'home', label: isNp ? 'गृह पृष्ठ' : 'Home', icon: BookOpen },
-    { id: 'courses', label: isNp ? 'पाठ्यक्रमहरू' : 'Courses', icon: GraduationCap },
-    { id: 'feed', label: isNp ? 'कन्टेन्ट फिड' : 'Instructional Feed', icon: Rss },
-    { id: 'instructors', label: isNp ? 'प्रशिक्षकहरू' : 'Instructors', icon: Users },
-    { id: 'about', label: isNp ? 'हाम्रो बारेमा' : 'About Us', icon: Info },
-    { id: 'contact', label: isNp ? 'सम्पर्क' : 'Contact', icon: Send },
+    { id: 'home', label: t('Home', 'गृह पृष्ठ', '首页'), icon: BookOpen },
+    { id: 'courses', label: t('Courses', 'पाठ्यक्रमहरू', '课程目录'), icon: GraduationCap },
+    { id: 'feed', label: t('Community Feed', 'कन्टेन्ट फिड', '社区动态'), icon: Rss },
+    { id: 'member', label: t('Member Portal', 'सदस्य पोर्टल', '会员中心'), icon: User },
+    { id: 'instructors', label: t('Instructors', 'प्रशिक्षकहरू', '师资团队'), icon: Users },
+    { id: 'about', label: t('About Us', 'हाम्रो बारेमा', '关于我们'), icon: Info },
+    { id: 'contact', label: t('Contact', 'सम्पर्क', '联系我们'), icon: Send },
   ];
 
+  const getRoleLabel = () => {
+    switch (currentRole) {
+      case 'admin':
+        return { label: t('Admin Panel', 'एडमिन प्यानल', '管理员面板'), color: 'bg-indigo-600 text-white', icon: ShieldCheck };
+      case 'instructor':
+        return { label: t('Teacher Panel', 'शिक्षक / इन्स्ट्रक्टर', '教师面板'), color: 'bg-amber-600 text-white', icon: UserCheck };
+      case 'student':
+        return { label: t('Member Portal', 'सदस्य (Member)', '会员中心'), color: 'bg-emerald-600 text-white', icon: User };
+      default:
+        return { label: t('Guest Explorer', 'अतिथि (Guest)', '游客模式'), color: 'bg-slate-700 text-white', icon: User };
+    }
+  };
+
+  const currentRoleInfo = getRoleLabel();
+  const RoleIcon = currentRoleInfo.icon;
+
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 text-slate-800 shadow-sm">
+    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 text-slate-800 shadow-2xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-20">
+        <div className="flex items-center justify-between h-16">
           
-          {/* Logo */}
-          <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setActiveTab('home')}>
-            <div className="w-10 h-10 rounded-lg bg-indigo-600 flex items-center justify-center text-white shadow-sm font-bold text-xl">
-              <GraduationCap className="w-6 h-6 text-white" />
+          {/* Brand Logo & Title Area */}
+          <div 
+            className="flex items-center space-x-2.5 cursor-pointer group" 
+            onClick={() => setActiveTab('home')}
+            title={isNp ? 'गृह पृष्ठमा जानुहोस् (MindSparQ Home)' : 'Go to MindSparQ Home Page'}
+          >
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-700 via-indigo-600 to-indigo-500 flex items-center justify-center text-white shadow-sm shadow-indigo-200 border border-indigo-400/30 group-hover:scale-105 transition-transform">
+              <GraduationCap className="w-5 h-5 text-white" />
             </div>
             <div>
               <div className="flex items-center space-x-1.5">
-                <span className="text-xl font-bold tracking-tight text-slate-900 font-sans">MINDSPACK</span>
-                <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-100">
+                <span className="text-lg font-black tracking-tight text-slate-900">MINDSPARQ</span>
+                <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded bg-indigo-100 text-indigo-800 border border-indigo-200 uppercase tracking-wider">
                   TECH
                 </span>
               </div>
-              <p className="text-[10px] text-slate-500 font-medium tracking-wide">
-                {isNp ? 'माइन्डस्प्याक एजुकेशन एण्ड टेक्नोलोजी' : 'Education & Technology'}
+              <p className="text-[10px] text-slate-500 font-medium tracking-tight -mt-0.5 hidden sm:block">
+                {isNp ? 'माइन्डस्पार्क एजुकेशन एण्ड टेक्नोलोजी' : 'MindSparQ Education & Tech'}
               </p>
             </div>
           </div>
 
           {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center space-x-1">
+          <nav className="hidden lg:flex items-center space-x-1">
             {navLinks.map((link) => {
               const Icon = link.icon;
               const isActive = activeTab === link.id;
@@ -82,92 +113,156 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
                 <button
                   key={link.id}
                   onClick={() => setActiveTab(link.id)}
-                  className={`flex items-center space-x-2 px-3.5 py-2 rounded-md text-sm font-medium transition-colors ${
+                  title={`${isNp ? 'यहाँ जानुहोस्:' : 'Navigate to'} ${link.label}`}
+                  className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                     isActive 
-                      ? 'bg-indigo-50 text-indigo-700 font-semibold' 
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                      ? 'bg-indigo-50 text-indigo-700 font-bold shadow-2xs' 
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
                   }`}
                 >
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-indigo-600' : 'text-slate-400'}`} />
+                  <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-indigo-600' : 'text-slate-400'}`} />
                   <span>{link.label}</span>
                 </button>
               );
             })}
           </nav>
 
-          {/* Controls: Language, Dashboard Tabs, Role & Auth */}
-          <div className="hidden lg:flex items-center space-x-3">
+          {/* Right Controls: Minimal Language Toggle & Role Dropdown with Google Auth */}
+          <div className="hidden lg:flex items-center space-x-2">
             
-            {/* System Specs & Setup Guide Button */}
+            {/* Minimal 3-Way Language Switcher Button (EN, NP, ZH) */}
             <button
-              onClick={() => setIsGuideModalOpen(true)}
-              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 text-xs font-medium transition-colors"
-              title="Requirements & System Setup Guide"
-            >
-              <HelpCircle className="w-3.5 h-3.5 text-indigo-600" />
-              <span>{isNp ? 'सिस्टम गाइड' : 'Setup Guide'}</span>
-            </button>
-
-            {/* Language Switcher */}
-            <button
-              onClick={() => setLanguage(isNp ? 'en' : 'np')}
-              className="flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold border border-slate-200 transition-colors"
+              onClick={() => {
+                if (language === 'en') setLanguage('np');
+                else if (language === 'np') setLanguage('zh');
+                else setLanguage('en');
+              }}
+              title={
+                language === 'en' 
+                  ? 'Switch to Nepali (नेपाली)' 
+                  : language === 'np' 
+                    ? 'Switch to Easy Chinese (简体中文)' 
+                    : 'Switch to English'
+              }
+              className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-indigo-50 text-slate-700 flex items-center space-x-1.5 border border-slate-200 transition-all font-bold text-xs"
             >
               <Globe className="w-3.5 h-3.5 text-indigo-600" />
-              <span>{isNp ? 'English 🇬🇧' : 'नेपाली 🇳🇵'}</span>
+              <span className="text-[11px]">
+                {language === 'en' ? 'EN' : language === 'np' ? 'नेपा' : '中文'}
+              </span>
             </button>
 
-            {/* Role Switcher Pill */}
-            <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
+            {/* ROLE SWITCHER & GUEST FEATURE DROPDOWN WITH GOOGLE LOGIN */}
+            <div className="relative" ref={roleDropdownRef}>
               <button
-                onClick={() => {
-                  switchRole('guest');
-                  setActiveTab('home');
-                }}
-                className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-all ${
-                  currentRole === 'guest' ? 'bg-white text-slate-900 shadow-sm font-semibold' : 'text-slate-600 hover:text-slate-900'
-                }`}
+                onClick={() => setRoleDropdownOpen(!roleDropdownOpen)}
+                title={isNp ? 'रोल तथा लगइन प्यानल चयन गर्नुहोस्' : 'Switch Role or Google Sign In'}
+                className={`flex items-center space-x-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border shadow-2xs ${currentRoleInfo.color} border-transparent hover:opacity-95`}
               >
-                {isNp ? 'अतिथि' : 'Guest'}
+                <RoleIcon className="w-3.5 h-3.5" />
+                <span>{currentRoleInfo.label}</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${roleDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
-              <button
-                onClick={() => {
-                  switchRole('instructor');
-                  setActiveTab('instructor_panel');
-                }}
-                className={`flex items-center space-x-1 px-2.5 py-1 text-xs font-medium rounded-lg transition-all ${
-                  currentRole === 'instructor' ? 'bg-amber-600 text-white shadow-sm font-semibold' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <UserCheck className="w-3 h-3" />
-                <span>{isNp ? 'शिक्षक' : 'Teacher'}</span>
-              </button>
-              <button
-                onClick={() => {
-                  switchRole('admin');
-                  setActiveTab('admin_panel');
-                }}
-                className={`flex items-center space-x-1 px-2.5 py-1 text-xs font-medium rounded-lg transition-all ${
-                  currentRole === 'admin' ? 'bg-indigo-600 text-white shadow-sm font-semibold' : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <ShieldCheck className="w-3 h-3" />
-                <span>{isNp ? 'एडमिन' : 'Admin'}</span>
-              </button>
+
+              {roleDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-slate-200 py-2 z-50 text-slate-800 space-y-1">
+                  <div className="px-3.5 py-1.5 border-b border-slate-100 flex items-center justify-between">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      {isNp ? 'रोल तथा लगइन प्यानल' : 'Guest & Role Navigation'}
+                    </p>
+                    <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-mono">
+                      {currentRole}
+                    </span>
+                  </div>
+
+                  {/* GUEST FEATURE OPTION WITH GOOGLE LOGIN EMBEDDED */}
+                  <div className={`p-2 rounded-xl mx-2 transition-colors ${currentRole === 'guest' ? 'bg-emerald-50/70 border border-emerald-200' : 'bg-slate-50/50 hover:bg-slate-100'}`}>
+                    <div className="flex items-center justify-between">
+                      <button
+                        onClick={() => {
+                          switchRole('guest');
+                          setActiveTab('home');
+                          setRoleDropdownOpen(false);
+                        }}
+                        title={isNp ? 'अतिथि ब्राउजिङ मोडमा स्विच गर्नुहोस्' : 'Switch to Guest Browsing Mode'}
+                        className="flex items-center space-x-2 text-left flex-1"
+                      >
+                        <User className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <div>
+                          <p className="text-xs font-bold text-slate-900">{isNp ? 'अतिथि मोड (Guest Explorer)' : 'Guest Explorer'}</p>
+                          <p className="text-[10px] text-slate-500">{isNp ? 'पब्लिक भ्यु तथा पाठ्यक्रम अध्ययन' : 'Public course browsing'}</p>
+                        </div>
+                      </button>
+                    </div>
+
+                    {/* Integrated Google Login Button inside Guest Dropdown */}
+                    <button
+                      onClick={() => {
+                        setIsAuthModalOpen(true);
+                        setRoleDropdownOpen(false);
+                      }}
+                      title={isNp ? 'गुगल मार्फत गेस्ट/विद्यार्थी लगइन गर्नुहोस्' : 'Google Sign In for Guest'}
+                      className="w-full mt-2 py-1.5 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold flex items-center justify-center space-x-1.5 shadow-2xs transition-all"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>{isNp ? 'गुगल लगइन (Google Sign In)' : 'Sign in with Google'}</span>
+                    </button>
+                  </div>
+
+                  {/* Instructor Panel Option */}
+                  <button
+                    onClick={() => {
+                      switchRole('instructor');
+                      setActiveTab('instructor_panel');
+                      setRoleDropdownOpen(false);
+                    }}
+                    title={isNp ? 'शिक्षक प्यानलमा जानुहोस्' : 'Switch to Teacher / Instructor Panel'}
+                    className={`w-full text-left px-3.5 py-2 text-xs font-semibold flex items-center space-x-2.5 hover:bg-amber-50 transition-colors ${
+                      currentRole === 'instructor' ? 'bg-amber-50 text-amber-900 font-bold' : 'text-slate-600'
+                    }`}
+                  >
+                    <UserCheck className="w-4 h-4 text-amber-600 shrink-0" />
+                    <div>
+                      <p className="text-slate-900 text-xs font-bold">{isNp ? 'शिक्षक प्यानल (Teacher Panel)' : 'Teacher / Instructor Panel'}</p>
+                      <p className="text-[10px] text-slate-400">{isNp ? 'पोस्ट तथा कोर्स व्यवस्थापन' : 'Post updates, manage content'}</p>
+                    </div>
+                  </button>
+
+                  {/* Admin Panel Option */}
+                  <button
+                    onClick={() => {
+                      switchRole('admin');
+                      setActiveTab('admin_panel');
+                      setRoleDropdownOpen(false);
+                    }}
+                    title={isNp ? 'प्रणाली एडमिन प्यानलमा जानुहोस्' : 'Switch to System Admin Panel'}
+                    className={`w-full text-left px-3.5 py-2 text-xs font-semibold flex items-center space-x-2.5 hover:bg-indigo-50 transition-colors ${
+                      currentRole === 'admin' ? 'bg-indigo-50 text-indigo-900 font-bold' : 'text-slate-600'
+                    }`}
+                  >
+                    <ShieldCheck className="w-4 h-4 text-indigo-600 shrink-0" />
+                    <div>
+                      <p className="text-slate-900 text-xs font-bold">{isNp ? 'एडमिन प्यानल (Admin Dashboard)' : 'System Admin Panel'}</p>
+                      <p className="text-[10px] text-slate-400">{isNp ? 'पूर्ण व्यवस्थापन र अधिकार' : 'Full site control & analytics'}</p>
+                    </div>
+                  </button>
+                </div>
+              )}
             </div>
 
-            {/* Authentication Button */}
+            {/* Account Avatar / Auth Trigger */}
             {currentUser ? (
-              <div className="flex items-center space-x-2 pl-2 border-l border-slate-200">
+              <div className="flex items-center space-x-2 pl-1.5 border-l border-slate-200">
                 <img 
                   src={currentUser.avatar} 
                   alt={currentUser.name} 
-                  className="w-8 h-8 rounded-full border border-indigo-200 object-cover" 
+                  className="w-8 h-8 rounded-lg border border-indigo-200 object-cover" 
+                  title={`${currentUser.name} (${currentUser.role})`}
                 />
                 <button
                   onClick={logout}
-                  className="p-1.5 rounded-lg text-slate-500 hover:text-red-600 hover:bg-slate-100 transition-colors"
-                  title="Logout"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                  title={isNp ? 'खाताबाट लगआउट गर्नुहोस्' : 'Sign Out of Account'}
                 >
                   <LogOut className="w-4 h-4" />
                 </button>
@@ -175,28 +270,36 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
             ) : (
               <button
                 onClick={() => setIsAuthModalOpen(true)}
-                className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm transition-all"
+                title={isNp ? 'गुगल लगइन विन्डो खोल्नुहोस्' : 'Open Google Auth Modal'}
+                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-2xs transition-all"
               >
-                <LogIn className="w-4 h-4" />
-                <span>{isNp ? 'गुगल लगइन' : 'Google Login'}</span>
+                <LogIn className="w-3.5 h-3.5" />
+                <span>{isNp ? 'लगइन' : 'Login'}</span>
               </button>
             )}
 
           </div>
 
-          {/* Mobile menu hamburger button */}
+          {/* Mobile Navigation & Controls */}
           <div className="flex items-center space-x-2 lg:hidden">
             <button
-              onClick={() => setLanguage(isNp ? 'en' : 'np')}
-              className="p-2 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold border border-slate-200"
+              onClick={() => {
+                if (language === 'en') setLanguage('np');
+                else if (language === 'np') setLanguage('zh');
+                else setLanguage('en');
+              }}
+              title="Switch Language (EN / NP / 中文)"
+              className="px-2 py-1 rounded-lg bg-slate-100 text-slate-700 text-[11px] font-bold border border-slate-200 flex items-center space-x-1"
             >
-              {isNp ? 'EN' : 'नेपाली'}
+              <Globe className="w-3.5 h-3.5 text-indigo-600" />
+              <span>{language === 'en' ? 'EN' : language === 'np' ? 'NP' : 'ZH'}</span>
             </button>
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2.5 rounded-xl bg-slate-100 text-slate-600 hover:text-slate-900 border border-slate-200"
+              title={isNp ? 'मेनु खोल्नुहोस्/बन्द गर्नुहोस्' : 'Toggle Navigation Menu'}
+              className="p-2 rounded-xl bg-slate-100 text-slate-600 hover:text-slate-900 border border-slate-200"
             >
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
 
@@ -217,7 +320,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
                     setActiveTab(link.id);
                     setMobileMenuOpen(false);
                   }}
-                  className={`flex items-center space-x-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  className={`flex items-center space-x-2 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-colors ${
                     isActive ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-700'
                   }`}
                 >
@@ -228,9 +331,9 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
             })}
           </div>
 
-          <div className="pt-2 border-t border-slate-200 space-y-3">
-            <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider">
-              {isNp ? 'प्यानल चयन गर्नुहोस्' : 'Select Panel View'}
+          <div className="pt-3 border-t border-slate-200 space-y-3">
+            <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">
+              {isNp ? 'रोल ड्रपडाउन चयन' : 'Working Panel Dropdown'}
             </p>
             <div className="grid grid-cols-3 gap-2">
               <button
@@ -239,8 +342,8 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
                   setActiveTab('home');
                   setMobileMenuOpen(false);
                 }}
-                className={`py-2 text-xs font-medium rounded-lg text-center ${
-                  currentRole === 'guest' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600'
+                className={`py-2 text-xs font-bold rounded-xl text-center border ${
+                  currentRole === 'guest' ? 'bg-slate-900 text-white border-slate-900' : 'bg-slate-100 text-slate-600 border-slate-200'
                 }`}
               >
                 {isNp ? 'अतिथि' : 'Guest'}
@@ -251,8 +354,8 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
                   setActiveTab('instructor_panel');
                   setMobileMenuOpen(false);
                 }}
-                className={`py-2 text-xs font-medium rounded-lg text-center ${
-                  currentRole === 'instructor' ? 'bg-amber-600 text-white' : 'bg-slate-100 text-slate-600'
+                className={`py-2 text-xs font-bold rounded-xl text-center border ${
+                  currentRole === 'instructor' ? 'bg-amber-600 text-white border-amber-600' : 'bg-slate-100 text-slate-600 border-slate-200'
                 }`}
               >
                 {isNp ? 'शिक्षक' : 'Teacher'}
@@ -263,32 +366,21 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
                   setActiveTab('admin_panel');
                   setMobileMenuOpen(false);
                 }}
-                className={`py-2 text-xs font-medium rounded-lg text-center ${
-                  currentRole === 'admin' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'
+                className={`py-2 text-xs font-bold rounded-xl text-center border ${
+                  currentRole === 'admin' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-slate-100 text-slate-600 border-slate-200'
                 }`}
               >
                 {isNp ? 'एडमिन' : 'Admin'}
               </button>
             </div>
 
-            <button
-              onClick={() => {
-                setIsGuideModalOpen(true);
-                setMobileMenuOpen(false);
-              }}
-              className="w-full flex items-center justify-center space-x-2 py-2.5 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-bold border border-indigo-200"
-            >
-              <HelpCircle className="w-4 h-4" />
-              <span>{isNp ? 'कम्प्लिट रोडम्याप र सिस्टम रिक्वायरमेन्ट' : 'Requirements & Tech Analysis'}</span>
-            </button>
-
             {currentUser ? (
               <div className="flex items-center justify-between p-3 bg-slate-100 border border-slate-200 rounded-xl">
                 <div className="flex items-center space-x-3">
                   <img src={currentUser.avatar} alt={currentUser.name} className="w-9 h-9 rounded-full object-cover" />
                   <div>
-                    <p className="text-sm font-semibold text-slate-900">{currentUser.name}</p>
-                    <p className="text-xs text-slate-500">{currentUser.email}</p>
+                    <p className="text-xs font-bold text-slate-900">{currentUser.name}</p>
+                    <p className="text-[10px] text-slate-500">{currentUser.email}</p>
                   </div>
                 </div>
                 <button onClick={logout} className="p-2 text-red-600 hover:bg-slate-200 rounded-lg">
@@ -301,7 +393,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
                   setIsAuthModalOpen(true);
                   setMobileMenuOpen(false);
                 }}
-                className="w-full flex items-center justify-center space-x-2 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold shadow-sm"
+                className="w-full flex items-center justify-center space-x-2 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm"
               >
                 <LogIn className="w-4 h-4" />
                 <span>{isNp ? 'गुगल लगइन गर्नुहोस्' : 'Google Sign In'}</span>
@@ -313,3 +405,4 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
     </header>
   );
 };
+

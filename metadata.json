@@ -1,6 +1,6 @@
 {
-  "name": "Mindspack Education & Technology",
-  "description": "Comprehensive educational & IT platform with Public Portal, Admin Panel, Instructor Dashboard, and Content Hub.",
+  "name": "MindSparQ Education & Technology",
+  "description": "Comprehensive IT & tech learning platform featuring public instructional feed, daily photo carousel, interactive courses, guest/teacher/admin dropdown switcher, and post engagement.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
