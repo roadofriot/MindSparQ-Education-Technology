@@ -1,0 +1,6 @@
+{
+  "name": "Mindspack Education & Technology",
+  "description": "Comprehensive educational & IT platform with Public Portal, Admin Panel, Instructor Dashboard, and Content Hub.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
