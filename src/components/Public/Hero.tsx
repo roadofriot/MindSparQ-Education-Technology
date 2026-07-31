@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { GraduationCap, ArrowRight, Play, Sparkles, ShieldCheck, UserCheck, BookOpen, Video, Award, Edit3, Trash2, Check, X, Save } from 'lucide-react';
 import { BatchAnnouncementSlider } from './BatchAnnouncementSlider';
+import { BatchSlider } from './BatchSlider';
 
 interface HeroProps {
   setActiveTab: (tab: string) => void;
@@ -68,7 +69,7 @@ export const Hero: React.FC<HeroProps> = ({ setActiveTab }) => {
         <BatchAnnouncementSlider onNavigateTab={setActiveTab} />
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 space-y-12">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
           
           {/* Main Hero Copy */}
@@ -349,6 +350,16 @@ export const Hero: React.FC<HeroProps> = ({ setActiveTab }) => {
 
           </div>
 
+        </div>
+
+        {/* Summer Batch 2026 Interactive Application Slider */}
+        <div className="pt-2">
+          <BatchSlider
+            onNavigateTab={setActiveTab}
+            onApplyBatch={(courseTitle) => {
+              setActiveTab('contact');
+            }}
+          />
         </div>
       </div>
     </div>

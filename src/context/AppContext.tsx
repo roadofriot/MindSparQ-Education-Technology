@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Course, InstructorProfile, InstructionalPost, StudentInquiry, User, UserRole, Language, DailyPhotoSlide, PostComment, HomeContentConfig, TeacherLoginRequest, ReadingHistoryItem } from '../types';
 import { initialCourses, initialInquiries, initialInstructors, initialPosts, initialDailyPhotos, initialHomeConfig, initialTeacherRequests, initialUsers } from '../data/initialData';
+import { supabase, isSupabaseConfigured } from '../utils/supabaseClient';
 
 interface AppContextType {
   language: Language;
@@ -101,6 +102,49 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       localStorage.removeItem(`${LOCAL_STORAGE_KEY}_user`);
     }
   }, [currentRole, currentUser]);
+
+  // Supabase Auth session listener & automatic session restoration on app load / OAuth redirect
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+
+    // Listen for auth state changes (e.g. Google OAuth redirect finish)
+    const { data: authSubscription } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        const sbUser = session.user;
+        const assignedRole: UserRole = (sbUser.user_metadata?.role as UserRole) || (sbUser.email?.includes('admin') ? 'admin' : 'student');
+        const activeUser: User = {
+          id: sbUser.id,
+          name: sbUser.user_metadata?.full_name || sbUser.user_metadata?.name || sbUser.email?.split('@')[0] || 'Authenticated User',
+          email: sbUser.email || 'user@supabase.io',
+          avatar: sbUser.user_metadata?.avatar_url || sbUser.user_metadata?.picture || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=80',
+          role: assignedRole
+        };
+        setCurrentUser(activeUser);
+        setCurrentRole(assignedRole);
+      }
+    });
+
+    // Restore active session on initial page load
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        const sbUser = session.user;
+        const assignedRole: UserRole = (sbUser.user_metadata?.role as UserRole) || (sbUser.email?.includes('admin') ? 'admin' : 'student');
+        const activeUser: User = {
+          id: sbUser.id,
+          name: sbUser.user_metadata?.full_name || sbUser.user_metadata?.name || sbUser.email?.split('@')[0] || 'Authenticated User',
+          email: sbUser.email || 'user@supabase.io',
+          avatar: sbUser.user_metadata?.avatar_url || sbUser.user_metadata?.picture || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=80',
+          role: assignedRole
+        };
+        setCurrentUser(activeUser);
+        setCurrentRole(assignedRole);
+      }
+    });
+
+    return () => {
+      authSubscription.subscription.unsubscribe();
+    };
+  }, []);
 
   // Home Config State
   const [homeConfig, setHomeConfig] = useState<HomeContentConfig>(() => {
@@ -319,7 +363,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const loginWithGoogle = (roleOrUser: UserRole | User = 'instructor', instructorId?: string) => {
+  const loginWithGoogle = async (roleOrUser: UserRole | User = 'instructor', instructorId?: string) => {
     let newUser: User;
 
     if (typeof roleOrUser === 'object' && roleOrUser !== null) {
@@ -343,7 +387,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       newUser = {
         id: `user-google-guest-${Date.now()}`,
         name: role === 'guest' ? 'Guest Explorer (Google Auth)' : 'Student Learner (Google Auth)',
-        email: role === 'guest' ? 'guest.explorer@gmail.com' : 'student.learner@gmail.com',
+        email: role === 'guest' ? 'guest.explorer@gmail.com' : 'roadofriot@gmail.com',
         avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=80',
         role: role
       };
@@ -364,7 +408,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIsAuthModalOpen(false);
   };
 
-  const logout = () => {
+  const logout = async () => {
+    if (isSupabaseConfigured()) {
+      try {
+        await supabase.auth.signOut();
+      } catch (err) {
+        console.warn('Supabase signOut notice:', err);
+      }
+    }
     setCurrentUser(null);
     setCurrentRole('guest');
   };

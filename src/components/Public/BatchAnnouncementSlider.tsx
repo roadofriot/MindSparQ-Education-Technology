@@ -19,7 +19,7 @@ const DEFAULT_BATCH_SLIDES: BatchSlide[] = [
     id: 'slide-1',
     badgeEn: 'SUMMER BATCH ADMISSIONS',
     badgeNp: 'समर ब्याच भर्ना',
-    noticeEn: '📢 Summer Batch 2023/2026 Admissions Open! Apply now for Full Stack, AI & DevOps Masterclasses.',
+    noticeEn: '📢 Summer Batch 2026 Admissions Open! Apply now for Full Stack, AI & DevOps Masterclasses.',
     noticeNp: '📢 समर ब्याच नयाँ भर्ना खुल्यो! सफ्टवेयर ईन्जिनियरिङ, एआई र डेभओप्स क्लासका लागि आवेदन दिनुहोस्।',
     ctaEn: 'Apply Now',
     ctaNp: 'आवेदन दिनुहोस्',

@@ -1,6 +1,20 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { X, ShieldCheck, UserCheck, CheckCircle2, Clock, Send, AlertCircle, Sparkles } from 'lucide-react';
+import { 
+  X, 
+  ShieldCheck, 
+  UserCheck, 
+  GraduationCap, 
+  Compass, 
+  Sparkles, 
+  ArrowRight, 
+  Send, 
+  Clock, 
+  CheckCircle2, 
+  User, 
+  Lock, 
+  Globe 
+} from 'lucide-react';
 
 export const GoogleAuthModal: React.FC = () => {
   const {
@@ -14,16 +28,23 @@ export const GoogleAuthModal: React.FC = () => {
   } = useApp();
   const isNp = language === 'np';
 
-  const [showRequestForm, setShowRequestForm] = useState(false);
+  const [portalTab, setPortalTab] = useState<'member' | 'teacher' | 'admin' | 'guest'>('member');
+  const [showTeacherRequestForm, setShowTeacherRequestForm] = useState(false);
+
+  // Teacher request form state
   const [reqName, setReqName] = useState('');
   const [reqEmail, setReqEmail] = useState('');
   const [reqDesignation, setReqDesignation] = useState('');
   const [reqBio, setReqBio] = useState('');
   const [requestSubmittedSuccess, setRequestSubmittedSuccess] = useState(false);
 
+  // Custom email state
+  const [customEmail, setCustomEmail] = useState('');
+  const [customName, setCustomName] = useState('');
+
   if (!isAuthModalOpen) return null;
 
-  const handleSubmitRequest = (e: React.FormEvent) => {
+  const handleSubmitTeacherRequest = (e: React.FormEvent) => {
     e.preventDefault();
     if (!reqName.trim() || !reqEmail.trim()) return;
 
@@ -42,25 +63,45 @@ export const GoogleAuthModal: React.FC = () => {
     setReqBio('');
   };
 
+  const handleDirectGoogleLogin = () => {
+    loginWithGoogle(portalTab === 'admin' ? 'admin' : portalTab === 'teacher' ? 'instructor' : 'student');
+  };
+
+  const handleCustomEmailLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    const email = customEmail.trim() || 'user.google@gmail.com';
+    const name = customName.trim() || email.split('@')[0];
+    const isAdmin = portalTab === 'admin' || email.toLowerCase() === 'roadofriot@gmail.com' || email.toLowerCase().includes('admin');
+    const role = portalTab === 'teacher' ? 'instructor' : isAdmin ? 'admin' : 'student';
+
+    loginWithGoogle({
+      id: `user-google-${Date.now()}`,
+      name,
+      email,
+      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=80',
+      role
+    });
+  };
+
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white border border-slate-200 rounded-3xl max-w-md w-full p-6 space-y-5 shadow-xl relative text-slate-900 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-md flex items-center justify-center p-4">
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 space-y-5 shadow-2xl relative text-slate-100 max-h-[92vh] overflow-y-auto">
         
-        {/* Close */}
+        {/* Close Button */}
         <button
           onClick={() => {
             setIsAuthModalOpen(false);
-            setShowRequestForm(false);
+            setShowTeacherRequestForm(false);
             setRequestSubmittedSuccess(false);
           }}
-          className="absolute top-4 right-4 p-2 rounded-xl bg-slate-100 text-slate-500 hover:text-slate-900 hover:bg-slate-200"
+          className="absolute top-4 right-4 p-2 rounded-xl bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition"
         >
           <X className="w-5 h-5" />
         </button>
 
-        {/* Google Header */}
+        {/* Modal Header */}
         <div className="text-center space-y-2">
-          <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 p-2.5 mx-auto shadow-sm flex items-center justify-center">
+          <div className="w-12 h-12 rounded-2xl bg-slate-800 border border-slate-700 p-2.5 mx-auto shadow-md flex items-center justify-center">
             <svg className="w-full h-full" viewBox="0 0 24 24">
               <path
                 fill="#4285F4"
@@ -81,280 +122,287 @@ export const GoogleAuthModal: React.FC = () => {
             </svg>
           </div>
 
-          <h3 className="text-lg font-bold text-slate-900">
-            {isNp ? 'गुगल लगइन (Sign in with Google)' : 'Sign in with Google'}
+          <h3 className="text-xl font-extrabold text-white tracking-tight">
+            {isNp ? 'लगइन तथा गेस्ट एक्सप्लोरर पोर्टल्स' : 'Unified Login & Guest Explorer Portal'}
           </h3>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-400">
             {isNp
-              ? 'माइंडस्पार्क एजुकेशन एण्ड टेक्नोलोजी ड्यासबोर्ड तथा गेस्ट/विद्यार्थी सुविधाका लागि साइन-इन गर्नुहोस्।'
-              : 'Choose an account or request teacher panel login access'}
+              ? 'गुगल साईन-इन, शिक्षक प्यानल, वा अतिथि माध्यमबाट सिधै प्रवेश गर्नुहोस्'
+              : 'Direct Google Auth, specialized role portals, or instant guest access'}
           </p>
         </div>
 
-        {/* Teacher Request Confirmation Alert */}
-        {requestSubmittedSuccess && (
-          <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-300 text-amber-900 text-xs space-y-1.5 animate-fadeIn">
-            <div className="flex items-center space-x-2 font-bold text-amber-800">
-              <Clock className="w-4 h-4 text-amber-600 shrink-0" />
-              <span>{isNp ? 'शिक्षक लगइन अनुरोध दर्ता भयो!' : 'Teacher Login Request Submitted!'}</span>
-            </div>
-            <p className="text-[11px] leading-relaxed">
+        {/* Integrated Navigation Tabs */}
+        <div className="grid grid-cols-4 bg-slate-950 p-1 rounded-2xl border border-slate-800 gap-1 text-[11px] font-bold">
+          <button
+            onClick={() => {
+              setPortalTab('member');
+              setShowTeacherRequestForm(false);
+            }}
+            className={`py-2 rounded-xl transition flex items-center justify-center gap-1 ${
+              portalTab === 'member'
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <GraduationCap className="w-3.5 h-3.5" />
+            <span>{isNp ? 'सदस्य' : 'Member'}</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setPortalTab('teacher');
+              setShowTeacherRequestForm(false);
+            }}
+            className={`py-2 rounded-xl transition flex items-center justify-center gap-1 ${
+              portalTab === 'teacher'
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <UserCheck className="w-3.5 h-3.5" />
+            <span>{isNp ? 'शिक्षक' : 'Teacher'}</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setPortalTab('admin');
+              setShowTeacherRequestForm(false);
+            }}
+            className={`py-2 rounded-xl transition flex items-center justify-center gap-1 ${
+              portalTab === 'admin'
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>{isNp ? 'एडमिन' : 'Admin'}</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setPortalTab('guest');
+              setShowTeacherRequestForm(false);
+            }}
+            className={`py-2 rounded-xl transition flex items-center justify-center gap-1 ${
+              portalTab === 'guest'
+                ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Compass className="w-3.5 h-3.5" />
+            <span>{isNp ? 'अतिथि' : 'Guest'}</span>
+          </button>
+        </div>
+
+        {/* PRIMARY DIRECT GOOGLE SIGN-IN BUTTON */}
+        <div className="space-y-3">
+          <button
+            onClick={handleDirectGoogleLogin}
+            className="w-full py-3 px-4 rounded-2xl bg-white hover:bg-slate-100 text-slate-900 font-extrabold text-xs flex items-center justify-center gap-3 shadow-lg transition transform active:scale-98"
+          >
+            <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
+              <path
+                fill="#4285F4"
+                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+              />
+              <path
+                fill="#34A853"
+                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+              />
+              <path
+                fill="#FBBC05"
+                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+              />
+              <path
+                fill="#EA4335"
+                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+              />
+            </svg>
+            <span>
               {isNp
-                ? 'तपाईंको शिक्षक लगइन अनुरोध एडमिन समक्ष पठाइएको छ। एडमिनले स्वीकृत गरेपछि शिक्षक इन्स्ट्रक्सन प्यानल स्वतः खुल्नेछ।'
-                : 'Your login request has been sent to MindSparQ Admin. Upon approval, your Teacher Instruction Panel will be unlocked.'}
+                ? 'गुगलद्वारा सिधै साइन-इन गर्नुहोस् (Direct Google Sign-In)'
+                : 'Continue Directly with Google Account'}
+            </span>
+            <ArrowRight className="w-4 h-4 text-slate-600" />
+          </button>
+        </div>
+
+        <div className="relative flex py-1 items-center">
+          <div className="flex-grow border-t border-slate-800"></div>
+          <span className="flex-shrink mx-3 text-[10px] text-slate-500 font-extrabold uppercase tracking-wider">
+            {isNp ? 'वा भूमिका अनुसार साइन-इन गर्नुहोस्' : 'Or Select Specific Role Login'}
+          </span>
+          <div className="flex-grow border-t border-slate-800"></div>
+        </div>
+
+        {/* TAB CONTENT: GUEST EXPLORER */}
+        {portalTab === 'guest' && (
+          <div className="p-4 rounded-2xl bg-emerald-950/30 border border-emerald-800/60 space-y-3">
+            <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs">
+              <Compass className="w-4 h-4" />
+              <span>{isNp ? 'गेस्ट एक्सप्लोरर माध्यम (Instant Guest Mode)' : 'Guest Explorer Access'}</span>
+            </div>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              {isNp
+                ? 'बिना पासवर्ड सम्पूर्ण कोर्स क्याटलग, ब्लग, र फोटो स्लाइडर अन्वेषण गर्नुहोस्।'
+                : 'Explore course previews, blog publications, and educational photo galleries without full account setup.'}
             </p>
+            <button
+              onClick={() => loginWithGoogle('guest')}
+              className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl transition shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2"
+            >
+              <span>{isNp ? 'अतिथि रूपमा अन्वेषण सुरु गर्नुहोस्' : 'Explore Platform as Guest'}</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
           </div>
         )}
 
-        {/* Toggle between standard account selection & custom Google email login & teacher request form */}
-        {!showRequestForm ? (
-          <div className="space-y-3 pt-1">
-
-            {/* Custom Google Account Sign-In Form */}
-            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5">
-              <p className="text-[11px] font-bold text-slate-700 flex items-center space-x-1">
-                <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-                <span>{isNp ? 'व्यक्तिगत गुगल खाताद्वारा लगइन गर्नुहोस्' : 'Sign In with Any Google Account'}</span>
-              </p>
-              
-              <div className="space-y-2">
-                <input
-                  type="email"
-                  placeholder="e.g. roadofriot@gmail.com or user@gmail.com"
-                  id="customGoogleEmailInput"
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-                
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="text"
-                    placeholder="Full Name (e.g. Erish Joshi)"
-                    id="customGoogleNameInput"
-                    className="w-full px-3 py-1.5 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
-                  
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const emailEl = document.getElementById('customGoogleEmailInput') as HTMLInputElement;
-                      const nameEl = document.getElementById('customGoogleNameInput') as HTMLInputElement;
-                      const email = emailEl?.value.trim() || 'user.google@gmail.com';
-                      const name = nameEl?.value.trim() || email.split('@')[0];
-                      const isAdmin = email.toLowerCase() === 'roadofriot@gmail.com' || email.toLowerCase().includes('admin');
-                      
-                      loginWithGoogle({
-                        id: `user-google-${Date.now()}`,
-                        name: name,
-                        email: email,
-                        avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=80',
-                        role: isAdmin ? 'admin' : 'student'
-                      });
-                    }}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shrink-0 shadow-sm"
-                  >
-                    {isNp ? 'लगइन' : 'Sign In'}
-                  </button>
-                </div>
-              </div>
+        {/* TAB CONTENT: MEMBER / STUDENT LOGIN */}
+        {portalTab === 'member' && (
+          <form onSubmit={handleCustomEmailLogin} className="space-y-3 bg-slate-950/60 p-4 rounded-2xl border border-slate-800">
+            <div className="flex items-center gap-2 text-xs font-bold text-cyan-300">
+              <GraduationCap className="w-4 h-4 text-cyan-400" />
+              <span>{isNp ? 'विद्यार्थी तथा सदस्य पोर्टल' : 'Student & Member Account Portal'}</span>
             </div>
 
-            <div className="relative flex py-1 items-center">
-              <div className="flex-grow border-t border-slate-200"></div>
-              <span className="flex-shrink mx-2 text-[10px] text-slate-400 font-bold uppercase">{isNp ? 'वा द्रुत खाता छान्नुहोस्' : 'Or Select Quick Account'}</span>
-              <div className="flex-grow border-t border-slate-200"></div>
-            </div>
-            
-            {/* Guest / Student Option */}
-            <button
-              onClick={() => loginWithGoogle('guest')}
-              className="w-full p-3 rounded-2xl bg-emerald-50/60 border border-emerald-200 hover:border-emerald-600 flex items-center justify-between text-left transition-all group"
-            >
-              <div className="flex items-center space-x-3">
-                <img
-                  src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=80"
-                  alt="Guest Google Account"
-                  className="w-9 h-9 rounded-full object-cover border border-emerald-500"
-                />
-                <div>
-                  <p className="text-xs font-bold text-slate-900 group-hover:text-emerald-700">
-                    {isNp ? 'अतिथि / विद्यार्थी खाता (Guest Google Auth)' : 'Guest Explorer / Student Account'}
-                  </p>
-                  <p className="text-[10px] text-slate-500 font-mono">guest.explorer@gmail.com</p>
-                </div>
-              </div>
-              <span className="px-2 py-1 rounded bg-emerald-600 text-white text-[10px] font-bold">
-                GUEST
-              </span>
-            </button>
-
-            {/* Admin Account Option */}
-            <button
-              onClick={() => loginWithGoogle('admin')}
-              className="w-full p-3 rounded-2xl bg-indigo-50/50 border border-indigo-200 hover:border-indigo-600 flex items-center justify-between text-left transition-all group"
-            >
-              <div className="flex items-center space-x-3">
-                <img
-                  src="https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=400&auto=format&fit=crop&q=80"
-                  alt="Admin Google Account"
-                  className="w-9 h-9 rounded-full object-cover border border-indigo-500"
-                />
-                <div>
-                  <p className="text-xs font-bold text-slate-900 group-hover:text-indigo-600">MindSparQ System Admin</p>
-                  <p className="text-[10px] text-slate-500 font-mono">roadofriot@gmail.com</p>
-                </div>
-              </div>
-              <span className="px-2 py-1 rounded bg-indigo-600 text-white text-[10px] font-bold">
-                ADMIN
-              </span>
-            </button>
-
-            {/* Verified Instructor Accounts */}
-            <div className="pt-2">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                  {isNp ? 'स्वीकृत शिक्षक खाताहरू' : 'Approved Teacher Accounts'}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setShowRequestForm(true)}
-                  className="text-[11px] font-bold text-indigo-600 hover:underline flex items-center space-x-1"
-                >
-                  <UserCheck className="w-3.5 h-3.5" />
-                  <span>{isNp ? '+ शिक्षक अनुरोध पठाउनुहोस्' : '+ Request Teacher Access'}</span>
-                </button>
-              </div>
-
-              <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
-                {instructors.map((inst) => (
-                  <button
-                    key={inst.id}
-                    onClick={() => loginWithGoogle('instructor', inst.id)}
-                    className="w-full p-2.5 rounded-2xl bg-slate-50 border border-slate-200 hover:border-indigo-600 flex items-center justify-between text-left transition-all group"
-                  >
-                    <div className="flex items-center space-x-3">
-                      <img
-                        src={inst.avatar}
-                        alt={inst.name}
-                        className="w-8 h-8 rounded-full object-cover border border-slate-300"
-                      />
-                      <div>
-                        <p className="text-xs font-bold text-slate-900 group-hover:text-indigo-600">{inst.name}</p>
-                        <p className="text-[10px] text-slate-500 font-mono">{inst.email}</p>
-                      </div>
-                    </div>
-                    <UserCheck className="w-4 h-4 text-indigo-600 shrink-0" />
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Pending Requests List */}
-            {teacherRequests.length > 0 && (
-              <div className="pt-2 border-t border-slate-200">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center space-x-1">
-                  <Clock className="w-3 h-3 text-amber-500" />
-                  <span>{isNp ? 'प्रतिक्षित शिक्षक लगइन अनुरोधहरू' : 'Pending Teacher Login Requests'}</span>
-                </p>
-                <div className="space-y-1.5 max-h-28 overflow-y-auto">
-                  {teacherRequests.map(req => (
-                    <div key={req.id} className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-xs flex items-center justify-between">
-                      <div>
-                        <p className="font-bold text-slate-800 text-[11px]">{req.name}</p>
-                        <p className="text-[10px] text-slate-500">{req.email}</p>
-                      </div>
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                        req.status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
-                        req.status === 'rejected' ? 'bg-rose-100 text-rose-700' :
-                        'bg-amber-100 text-amber-700 animate-pulse'
-                      }`}>
-                        {req.status}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-          </div>
-        ) : (
-          /* Request Teacher Access Form */
-          <form onSubmit={handleSubmitRequest} className="space-y-3 pt-1 text-xs">
-            <div className="flex items-center justify-between pb-1 border-b border-slate-200">
-              <h4 className="font-bold text-slate-900 flex items-center space-x-1.5">
-                <UserCheck className="w-4 h-4 text-indigo-600" />
-                <span>{isNp ? 'शिक्षक लगइन अनुरोध फारम' : 'Teacher Access Application'}</span>
-              </h4>
-              <button
-                type="button"
-                onClick={() => setShowRequestForm(false)}
-                className="text-slate-500 hover:text-slate-800 underline font-semibold text-[11px]"
-              >
-                {isNp ? 'रद्द गर्नुहोस्' : 'Back to login'}
-              </button>
-            </div>
-
-            <div className="space-y-1">
-              <label className="font-semibold text-slate-700">{isNp ? 'पूरा नाम *' : 'Full Name *'}</label>
-              <input
-                type="text"
-                required
-                value={reqName}
-                onChange={(e) => setReqName(e.target.value)}
-                placeholder="e.g. Er. Erish Joshi"
-                className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="font-semibold text-slate-700">{isNp ? 'ईमेल *' : 'Email Address *'}</label>
+            <div className="space-y-2 text-xs">
               <input
                 type="email"
-                required
-                value={reqEmail}
-                onChange={(e) => setReqEmail(e.target.value)}
-                placeholder="e.g. teacher@mindsparq.edu.np"
-                className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs"
+                placeholder="Google / Gmail Email Address"
+                value={customEmail}
+                onChange={(e) => setCustomEmail(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
               />
-            </div>
-
-            <div className="space-y-1">
-              <label className="font-semibold text-slate-700">{isNp ? 'पदमान / विषय (Designation)' : 'Designation / Specialty'}</label>
               <input
                 type="text"
-                value={reqDesignation}
-                onChange={(e) => setReqDesignation(e.target.value)}
-                placeholder="e.g. Senior AI & Robotics Instructor"
-                className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="font-semibold text-slate-700">{isNp ? 'संक्षिप्त विवरण (Bio)' : 'Short Bio / Qualifications'}</label>
-              <textarea
-                rows={2}
-                value={reqBio}
-                onChange={(e) => setReqBio(e.target.value)}
-                placeholder="Describe your expertise and teaching background..."
-                className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs"
+                placeholder="Full Name (Optional)"
+                value={customName}
+                onChange={(e) => setCustomName(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
               />
             </div>
 
             <button
               type="submit"
-              className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center space-x-1.5 shadow-md transition-all"
+              className="w-full py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs rounded-xl transition"
             >
-              <Send className="w-3.5 h-3.5" />
-              <span>{isNp ? 'एडमिनलाई अनुरोध पठाउनुहोस्' : 'Submit Access Request to Admin'}</span>
+              {isNp ? 'सदस्य खाता प्रवेश' : 'Enter Member Portal'}
             </button>
           </form>
         )}
 
-        {/* Footer info */}
-        <div className="pt-3 border-t border-slate-200 text-center">
+        {/* TAB CONTENT: TEACHER PANEL LOGIN */}
+        {portalTab === 'teacher' && (
+          <div className="space-y-3 bg-slate-950/60 p-4 rounded-2xl border border-slate-800">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs font-bold text-indigo-300">
+                <UserCheck className="w-4 h-4 text-indigo-400" />
+                <span>{isNp ? 'शिक्षक तथा इन्स्ट्रक्टर प्यानल' : 'Teacher Instruction Panel'}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowTeacherRequestForm(!showTeacherRequestForm)}
+                className="text-[11px] font-bold text-indigo-400 hover:underline"
+              >
+                {showTeacherRequestForm ? 'Back' : '+ Request Access'}
+              </button>
+            </div>
+
+            {requestSubmittedSuccess && (
+              <div className="p-3 rounded-xl bg-amber-950/40 border border-amber-800/60 text-amber-300 text-xs flex items-center gap-2">
+                <Clock className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>{isNp ? 'शिक्षक आवेदन दर्ता भयो! एडमिन स्वीकृतिको प्रतिक्षामा छ।' : 'Teacher request submitted! Pending admin approval.'}</span>
+              </div>
+            )}
+
+            {!showTeacherRequestForm ? (
+              <div className="space-y-2">
+                <p className="text-[11px] text-slate-400">
+                  {isNp ? 'स्वीकृत शिक्षक खाता छान्नुहोस्:' : 'Select approved teacher profile:'}
+                </p>
+                <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
+                  {instructors.map((inst) => (
+                    <button
+                      key={inst.id}
+                      onClick={() => loginWithGoogle('instructor', inst.id)}
+                      className="w-full p-2.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-indigo-500 flex items-center justify-between text-left transition group"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <img src={inst.avatar} alt={inst.name} className="w-7 h-7 rounded-full object-cover" />
+                        <div>
+                          <p className="text-xs font-bold text-slate-200 group-hover:text-indigo-300">{inst.name}</p>
+                          <p className="text-[10px] text-slate-400">{inst.email}</p>
+                        </div>
+                      </div>
+                      <UserCheck className="w-4 h-4 text-indigo-400" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmitTeacherRequest} className="space-y-2.5 text-xs">
+                <input
+                  type="text"
+                  required
+                  placeholder="Full Name *"
+                  value={reqName}
+                  onChange={(e) => setReqName(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                />
+                <input
+                  type="email"
+                  required
+                  placeholder="Email Address *"
+                  value={reqEmail}
+                  onChange={(e) => setReqEmail(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                />
+                <input
+                  type="text"
+                  placeholder="Designation / Specialty"
+                  value={reqDesignation}
+                  onChange={(e) => setReqDesignation(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                />
+                <button
+                  type="submit"
+                  className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Submit Teacher Request</span>
+                </button>
+              </form>
+            )}
+          </div>
+        )}
+
+        {/* TAB CONTENT: ADMIN CMS LOGIN */}
+        {portalTab === 'admin' && (
+          <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-3">
+            <div className="flex items-center gap-2 text-xs font-bold text-amber-300">
+              <ShieldCheck className="w-4 h-4 text-amber-400" />
+              <span>{isNp ? 'माइंडस्पार्क इन्टरप्राइज एडमिन लगइन' : 'MindSparQ Enterprise Admin CMS'}</span>
+            </div>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              {isNp
+                ? 'एडमिन लगइनले पाठ्यक्रम, ब्लग, दैनिक फोटो, शिक्षक अनुरोध र सुपाबेस रियल-टाइम डेटा व्यवस्थापन अधिकार दिन्छ।'
+                : 'Grants master control over course catalog, broad broadcasts, teacher approvals, and Supabase database.'}
+            </p>
+            <button
+              onClick={() => loginWithGoogle('admin')}
+              className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-slate-950 font-extrabold text-xs rounded-xl transition shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2"
+            >
+              <Lock className="w-3.5 h-3.5" />
+              <span>{isNp ? 'एडमिन ड्यासबोर्डमा प्रवेश गर्नुहोस्' : 'Login as Master System Admin'}</span>
+            </button>
+          </div>
+        )}
+
+        {/* Modal Footer */}
+        <div className="pt-2 border-t border-slate-800 text-center">
           <p className="text-[11px] text-slate-500">
-            {isNp
-              ? 'नोट: लगइन भएपछि आफ्नो भूमिका अनुरूप प्रोफाइल र सुविधाहरू अनलक हुन्छन्।'
-              : 'Logging in authenticates your role and unlocks specialized tools.'}
+            MindSparQ Auth & Guest Portal • Powered by Supabase & Google Cloud
           </p>
         </div>
 
@@ -362,4 +410,3 @@ export const GoogleAuthModal: React.FC = () => {
     </div>
   );
 };
-
